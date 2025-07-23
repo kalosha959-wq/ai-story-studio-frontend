@@ -31,6 +31,5 @@
     "declaration": true,
     "sourceMap": true
   },
-  "include": ["src", "vite.config.js"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  "include": ["src", "vite.config.js"]
 }

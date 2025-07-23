@@ -1,0 +1,190 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install frontend dependencies
+        run: npm ci
+        
+      - name: Install backend dependencies
+        run: cd backend && npm ci
+        
+      - name: Run frontend tests
+        run: npm test -- --coverage --watchAll=false
+        
+      - name: Run backend tests
+        run: cd backend && npm test
+        
+      - name: TypeScript compilation check
+        run: |
+          npm run build
+          cd backend && npm run build
+
+  deploy-frontend:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_ENCRYPTION_KEY: ${{ secrets.VITE_ENCRYPTION_KEY }}
+          VITE_STRIPE_PUBLIC_KEY: ${{ secrets.VITE_STRIPE_PUBLIC_KEY }}
+          VITE_GOOGLE_ANALYTICS_ID: ${{ secrets.VITE_GOOGLE_ANALYTICS_ID }}
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+          
+      - name: Deploy to S3
+        run: |
+          aws s3 sync dist/ s3://${{ secrets.S3_BUCKET }} --delete
+          aws s3 cp dist/index.html s3://${{ secrets.S3_BUCKET }}/index.html --cache-control "no-cache,no-store,must-revalidate"
+          
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+  deploy-backend:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install backend dependencies
+        run: cd backend && npm ci --production
+        
+      - name: Build backend
+        run: cd backend && npm run build
+        
+      - name: Create deployment package
+        run: |
+          cd backend
+          tar -czf ../backend-deploy.tar.gz dist/ node_modules/ package.json ecosystem.config.js
+          
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          script: |
+            # Backup current version
+            sudo cp -r /var/www/ai-story-studio-backend /var/www/ai-story-studio-backend-backup-$(date +%Y%m%d-%H%M%S)
+            
+            # Stop current service
+            pm2 stop ai-story-studio-backend || true
+            
+            # Extract new version
+            cd /var/www/ai-story-studio-backend
+            sudo tar -xzf /tmp/backend-deploy.tar.gz
+            
+            # Set environment variables
+            echo "NODE_ENV=production" | sudo tee /var/www/ai-story-studio-backend/.env
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" | sudo tee -a /var/www/ai-story-studio-backend/.env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" | sudo tee -a /var/www/ai-story-studio-backend/.env
+            echo "ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}" | sudo tee -a /var/www/ai-story-studio-backend/.env
+            
+            # Start service
+            pm2 start ecosystem.config.js --env production
+            pm2 save
+            
+            # Health check
+            sleep 10
+            curl -f http://localhost:3001/health || exit 1
+            
+      - name: Upload deployment package
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          source: "backend-deploy.tar.gz"
+          target: "/tmp/"
+
+  health-check:
+    needs: [deploy-frontend, deploy-backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for deployment
+        run: sleep 30
+        
+      - name: Check frontend health
+        run: |
+          curl -f https://ai-story-studio.com || exit 1
+          echo "Frontend is healthy"
+          
+      - name: Check backend health
+        run: |
+          curl -f https://api.ai-story-studio.com/health || exit 1
+          echo "Backend is healthy"
+          
+      - name: Run smoke tests
+        run: |
+          # Test user registration endpoint
+          curl -X POST https://api.ai-story-studio.com/api/auth/register \
+            -H "Content-Type: application/json" \
+            -d '{"email":"test@example.com","password":"testpass123","firstName":"Test","lastName":"User","agreeToTerms":true}' || echo "Registration test completed"
+          
+          # Test story creation endpoint (requires auth)
+          # Add more comprehensive smoke tests here
+          
+  notify:
+    needs: [health-check]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Slack on success
+        if: success()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: "🚀 AI Story Studio deployed to production successfully!"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+      - name: Notify Slack on failure
+        if: failure()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: "❌ AI Story Studio deployment to production failed!"
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
