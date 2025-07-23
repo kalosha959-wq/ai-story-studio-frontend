@@ -1,0 +1,376 @@
+/* AI Story Studio Frontend - Main Application Styles */
+
+:root {
+    --primary-color: #2563eb;
+    --secondary-color: #f3f4f6;
+    --accent-color: #10b981;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --background: #ffffff;
+    --card-background: #f9fafb;
+    --workspace-background: #f8fafc;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+        'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+        sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    color: var(--text-primary);
+    background-color: var(--workspace-background);
+    line-height: 1.6;
+}
+
+.app {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main Content Layout */
+.app-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+}
+
+.writing-workspace {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 350px;
+    gap: 1rem;
+    padding: 1rem;
+    min-height: 0;
+    /* Allows grid items to shrink */
+}
+
+.writing-workspace.ai-hidden {
+    grid-template-columns: 1fr;
+}
+
+.editor-section {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.ai-section {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* AI Toggle Button */
+.ai-toggle-button {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 0.75rem 1rem;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 25px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.2s ease;
+    z-index: 100;
+}
+
+.ai-toggle-button:hover {
+    background: #2563eb;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.ai-toggle-button:active {
+    transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .writing-workspace {
+        grid-template-columns: 1fr 300px;
+    }
+}
+
+@media (max-width: 968px) {
+    .writing-workspace {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr auto;
+        gap: 0;
+    }
+
+    .ai-section {
+        max-height: 40vh;
+        border-top: 1px solid var(--border-color);
+        border-left: none;
+    }
+
+    .ai-toggle-button {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        font-size: 0.8125rem;
+        padding: 0.75rem 1rem;
+        min-width: 48px;
+        min-height: 48px;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+}
+
+@media (max-width: 768px) {
+    .writing-workspace {
+        padding: 0.5rem;
+    }
+
+    .ai-section {
+        max-height: 50vh;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 999;
+        background: white;
+        border-radius: 12px 12px 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+        transform: translateY(100%);
+        transition: transform 0.3s ease-out;
+    }
+
+    .ai-section.show {
+        transform: translateY(0);
+    }
+
+    .ai-toggle-button {
+        bottom: 2rem;
+        right: 1rem;
+        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+    }
+
+    .ai-toggle-button .button-text {
+        display: none;
+    }
+}
+
+/* Animation for smooth layout transitions */
+.writing-workspace {
+    transition: grid-template-columns 0.3s ease;
+}
+
+.ai-section {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Loading states */
+.app-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: var(--text-secondary);
+    font-size: 1.125rem;
+}
+
+/* Focus management for accessibility */
+.app:focus-within .ai-toggle-button {
+    opacity: 0.7;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --text-secondary: #000000;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+
+    .writing-workspace,
+    .ai-section,
+    .ai-toggle-button {
+        transition: none;
+        animation: none;
+    }
+}
+
+/* Header Styles */
+.app-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+    color: white;
+    padding: 2rem 1rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.app-header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+/* Main Content */
+.app-main {
+    flex: 1;
+    padding: 3rem 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+}
+
+.welcome-section {
+    text-align: center;
+}
+
+.welcome-section h2 {
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+}
+
+.welcome-section>p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: 3rem;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Features Grid */
+.features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    margin-top: 3rem;
+}
+
+.feature-card {
+    background: var(--card-background);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: left;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.feature-card h3 {
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.feature-card p {
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Footer */
+.app-footer {
+    background-color: var(--secondary-color);
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 1.5rem;
+    border-top: 1px solid var(--border-color);
+    font-size: 0.9rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .app-header h1 {
+        font-size: 2rem;
+    }
+
+    .features-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .app-main {
+        padding: 2rem 1rem;
+    }
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.welcome-section {
+    animation: fadeIn 0.6s ease-out;
+}
+
+.feature-card {
+    animation: fadeIn 0.6s ease-out;
+    animation-fill-mode: backwards;
+}
+
+.feature-card:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.feature-card:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.feature-card:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+.feature-card:nth-child(4) {
+    animation-delay: 0.4s;
+}

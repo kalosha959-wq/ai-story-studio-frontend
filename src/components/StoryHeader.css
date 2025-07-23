@@ -1,0 +1,237 @@
+/* Story Header Styles */
+
+.story-header {
+    background: white;
+    border-bottom: 1px solid #e1e5e9;
+    padding: 1rem 1.5rem;
+}
+
+.story-header.no-story {
+    background: #f8fafc;
+    border-bottom: 1px solid #e1e5e9;
+}
+
+.header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    max-width: 100%;
+}
+
+.no-story-message {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Story Info */
+.story-info {
+    flex: 1;
+    min-width: 0;
+    /* Allows text truncation */
+}
+
+.story-title-section {
+    margin-bottom: 0.5rem;
+}
+
+.story-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+    display: inline-block;
+    max-width: 100%;
+    word-break: break-word;
+}
+
+.story-title:hover {
+    background: #f3f4f6;
+}
+
+.title-edit-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.title-input {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+    border: 2px solid #3b82f6;
+    border-radius: 4px;
+    padding: 0.25rem 0.5rem;
+    background: white;
+    outline: none;
+    font-family: inherit;
+    width: 100%;
+    max-width: 500px;
+}
+
+.title-edit-hint {
+    font-size: 0.75rem;
+    color: #6b7280;
+    font-style: italic;
+}
+
+/* Story Metadata */
+.story-metadata {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.metadata-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.metadata-item.genre {
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 500;
+    color: #374151;
+}
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-shrink: 0;
+}
+
+.save-button,
+.new-story-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border: 1px solid #d1d5db;
+    background: white;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    transition: all 0.15s ease;
+}
+
+.save-button:hover {
+    background: #f3f4f6;
+    border-color: #10b981;
+    color: #10b981;
+}
+
+.new-story-button {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: white;
+}
+
+.new-story-button:hover {
+    background: #2563eb;
+    border-color: #2563eb;
+    transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .header-actions {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 768px) {
+    .story-header {
+        padding: 1rem;
+    }
+
+    .story-title {
+        font-size: 1.25rem;
+    }
+
+    .title-input {
+        font-size: 1.25rem;
+    }
+
+    .story-metadata {
+        gap: 0.75rem;
+    }
+
+    .metadata-item {
+        font-size: 0.8125rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+
+    .save-button span,
+    .new-story-button span {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .story-metadata {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .header-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .save-button,
+    .new-story-button {
+        justify-content: center;
+    }
+
+    .save-button span,
+    .new-story-button span {
+        display: inline;
+    }
+}
+
+/* Animation for smooth interactions */
+.story-title,
+.save-button,
+.new-story-button {
+    transform: translateY(0);
+}
+
+.save-button:active,
+.new-story-button:active {
+    transform: translateY(1px);
+}
+
+/* Focus states for accessibility */
+.story-title:focus-visible,
+.title-input:focus-visible,
+.save-button:focus-visible,
+.new-story-button:focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}

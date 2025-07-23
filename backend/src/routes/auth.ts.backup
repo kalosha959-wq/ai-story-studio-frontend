@@ -1,0 +1,198 @@
+/**
+ * User Authentication Routes
+ * Simple authentication system with JWT tokens
+ */
+
+import { Router, Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
+import { logger } from '../utils/logger.js';
+import { config } from '../config/environment.js';
+
+const router = Router();
+
+// Validation schemas
+const registerSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  agreeToTerms: z.boolean().refine(val => val === true, 'Must agree to terms'),
+});
+
+const loginSchema = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().default(false),
+});
+
+// Mock user storage
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  hashedPassword: string;
+  createdAt: Date;
+}
+
+const users: Map<string, User> = new Map();
+
+// Helper functions
+function generateToken(payload: any, expiresIn: string = '24h'): string {
+  return jwt.sign(payload, config.auth.jwtSecret as string, { expiresIn });
+}
+
+function generateUserId(): string {
+  return `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+function findUserByEmail(email: string): User | undefined {
+  for (const user of users.values()) {
+    if (user.email === email) {
+      return user;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * @route POST /api/v1/auth/register
+ * @desc Register a new user
+ */
+router.post('/register', async (req: Request, res: Response) => {
+  try {
+    const validatedData = registerSchema.parse(req.body);
+    const { email, password, firstName, lastName } = validatedData;
+
+    logger.info('User registration attempt', { email, firstName, lastName });
+
+    // Check if user exists
+    const existingUser = findUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: 'User already exists with this email',
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user
+    const userId = generateUserId();
+    const user: User = {
+      id: userId,
+      email,
+      firstName,
+      lastName,
+      hashedPassword,
+      createdAt: new Date(),
+    };
+
+    users.set(userId, user);
+
+    // Generate token
+    const token = generateToken({ userId, email });
+
+    logger.info('User registered successfully', { userId, email });
+
+    res.status(201).json({
+      success: true,
+      message: 'Registration successful',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+        token,
+      },
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: error.errors,
+      });
+    }
+
+    logger.error('Registration failed', { error });
+    return res.status(500).json({
+      success: false,
+      error: 'Registration failed',
+    });
+  }
+});
+
+/**
+ * @route POST /api/v1/auth/login
+ * @desc Login user
+ */
+router.post('/login', async (req: Request, res: Response) => {
+  try {
+    const validatedData = loginSchema.parse(req.body);
+    const { email, password, rememberMe } = validatedData;
+
+    logger.info('User login attempt', { email });
+
+    // Find user
+    const user = findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password',
+      });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.hashedPassword);
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or password',
+      });
+    }
+
+    // Generate token
+    const expiresIn = rememberMe ? '30d' : '24h';
+    const token = generateToken({ userId: user.id, email }, expiresIn);
+
+    logger.info('User logged in successfully', { userId: user.id, email });
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+        token,
+      },
+    });
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: error.errors,
+      });
+    }
+
+    logger.error('Login failed', { error });
+    return res.status(500).json({
+      success: false,
+      error: 'Login failed',
+    });
+  }
+});
+
+export default router;

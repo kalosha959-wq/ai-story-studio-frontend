@@ -4,7 +4,32 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-        node    {
+        about: "Launch Chrome against localhost",
+        "Launch Chrome against localhost",
+        "Launch Program",
+        "JavaScript Debug Terminal"
+        "node-terminal",
+        "node",
+        "chrome",
+        "webRoot": "${workspaceFolder}",
+
+        DebugConfiguration
+        {
+            "type": "chrome",
+            "name": "Launch Chrome against localhost",
+            "request": "launch",
+            "url": "http://localhost:3000",
+            "webRoot": "${workspaceFolder}",
+            "sourceMapPathOverrides": {
+                "/app/*": "${workspaceFolder}/app/*"
+            },
+            "runtimeArgs": [
+                "--remote-debugging-port=9222"
+            ],
+            "port": 9222,
+            "timeout": 30000
+        },
+        {
             "type": "node",
             "name": "Launch Program",
             "request": "launch",
@@ -22,4 +47,4 @@
             "cwd": "${workspaceFolder}"
         }
     ]
-} node
+} 
