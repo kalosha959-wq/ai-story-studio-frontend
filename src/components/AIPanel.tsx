@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useStoryStore } from '../store/storyStore';
-import { Sparkles, Send, Loader2, Copy, Plus, AlertCircle } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { useFeatureAccess, useUsageTracker, FEATURES, FeatureGuard } from '../hooks/useFeatureAccess';
+import { Sparkles, Send, Loader2, Copy, Plus, AlertCircle, Crown, Zap } from 'lucide-react';
 import './AIPanel.css';
 
 export const AIPanel = () => {
@@ -13,9 +15,15 @@ export const AIPanel = () => {
         addGeneratedText,
         updateStoryContent,
     } = useStoryStore();
+    
+    const { isAuthenticated, setShowLoginModal } = useAuthStore();
+    const { getSubscriptionInfo } = useFeatureAccess();
+    const { trackAction, canPerformAction } = useUsageTracker();
 
     const [localPrompt, setLocalPrompt] = useState('');
     const [error, setError] = useState<string | null>(null);
+    
+    const subscriptionInfo = getSubscriptionInfo();
 
     // Simulate AI text generation (in a real app, this would call an API)
     const generateAIText = async (prompt: string) => {
@@ -24,10 +32,29 @@ export const AIPanel = () => {
             return;
         }
 
+        // Check authentication
+        if (!isAuthenticated) {
+            setShowLoginModal(true);
+            return;
+        }
+
+        // Check if user can perform AI action
+        const canPerform = canPerformAction('ai_story_generation');
+        if (!canPerform.hasAccess) {
+            setError(canPerform.reason || 'Cannot perform AI generation');
+            return;
+        }
+
         setError(null);
         startAIGeneration();
 
         try {
+            // Track the action
+            trackAction('ai_story_generation', {
+                prompt: prompt.substring(0, 50) + '...', // First 50 chars for privacy
+                storyId: currentStory?.id,
+            });
+
             // Simulate API delay
             await new Promise(resolve => setTimeout(resolve, 2000));
 
@@ -91,150 +118,187 @@ export const AIPanel = () => {
                     <Sparkles className="title-icon" size={20} aria-hidden="true" />
                     <h3>AI Writing Assistant</h3>
                 </div>
-            </div>
-
-            <div className="ai-panel-content">
-                {/* Error Display */}
-                {error && (
-                    <div className="error-message" role="alert" aria-live="polite">
-                        <AlertCircle size={16} aria-hidden="true" />
-                        <span>{error}</span>
-                        <button
-                            className="error-dismiss"
-                            onClick={() => setError(null)}
-                            aria-label="Dismiss error"
-                        >
-                            ×
-                        </button>
-                    </div>
-                )}
-
-                {/* Quick Prompts */}
-                <div className="quick-prompts">
-                    <h4>Quick Prompts</h4>
-                    <div className="prompt-buttons" role="group" aria-label="Quick prompt options">
-                        {quickPrompts.map((item, index) => (
-                            <button
-                                key={index}
-                                className="prompt-button"
-                                onClick={() => setLocalPrompt(item.prompt)}
-                                disabled={aiState.isGenerating}
-                                aria-label={`Use prompt: ${item.label}`}
-                                type="button"
-                            >
-                                {item.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Custom Prompt Input */}
-                <div className="prompt-input-section">
-                    <h4>Custom Prompt</h4>
-                    <div className="prompt-input-container">
-                        <label htmlFor="ai-prompt-textarea" className="sr-only">
-                            Enter your custom AI prompt
-                        </label>
-                        <textarea
-                            id="ai-prompt-textarea"
-                            value={localPrompt}
-                            onChange={(e) => setLocalPrompt(e.target.value)}
-                            placeholder="Tell the AI what you want to write... (e.g., 'continue the story', 'add a dramatic scene', 'develop the main character')"
-                            className="prompt-textarea"
-                            disabled={aiState.isGenerating}
-                            rows={3}
-                            aria-describedby={error ? "ai-error-message" : undefined}
-                        />
-                        <button
-                            onClick={handleGenerate}
-                            disabled={aiState.isGenerating || !localPrompt.trim()}
-                            className="generate-button"
-                            aria-label={aiState.isGenerating ? "Generating content..." : "Generate AI content"}
-                            type="button"
-                        >
-                            {aiState.isGenerating ? (
-                                <>
-                                    <Loader2 className="loading-icon" size={16} aria-hidden="true" />
-                                    <span>Generating...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Send size={16} aria-hidden="true" />
-                                    <span>Generate</span>
-                                </>
+                
+                {/* Subscription Status */}
+                {isAuthenticated && subscriptionInfo && (
+                    <div className="subscription-status">
+                        <div className="credits-remaining">
+                            <Zap size={14} />
+                            <span>{subscriptionInfo.aiCredits.remaining} credits left</span>
+                            {subscriptionInfo.aiCredits.percentage > 80 && (
+                                <Crown size={12} className="low-credits-icon" />
                             )}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Generated Content */}
-                {(aiState.lastGeneration || aiState.isGenerating) && (
-                    <div className="generated-content">
-                        <h4>Generated Content</h4>
-                        {aiState.isGenerating ? (
-                            <div className="generating-placeholder">
-                                <Loader2 className="loading-icon" size={20} />
-                                <span>AI is crafting your story...</span>
-                            </div>
-                        ) : (
-                            <div className="generated-text-container">
-                                <div className="generated-text">
-                                    {aiState.lastGeneration}
-                                </div>
-                                <div className="generated-actions">
-                                    <button
-                                        onClick={() => handleInsertText(aiState.lastGeneration)}
-                                        className="action-button insert-button"
-                                        title="Insert into story"
-                                    >
-                                        <Plus size={16} />
-                                        Insert
-                                    </button>
-                                    <button
-                                        onClick={() => handleCopyText(aiState.lastGeneration)}
-                                        className="action-button copy-button"
-                                        title="Copy to clipboard"
-                                    >
-                                        <Copy size={16} />
-                                        Copy
-                                    </button>
-                                </div>
+                        </div>
+                        {subscriptionInfo.isOnTrial && subscriptionInfo.daysLeft !== null && (
+                            <div className="trial-status">
+                                <Crown size={12} />
+                                <span>{subscriptionInfo.daysLeft} days left</span>
                             </div>
                         )}
                     </div>
                 )}
+            </div>
 
-                {/* Generation History */}
-                {aiState.generationHistory.length > 0 && (
-                    <div className="generation-history">
-                        <h4>Recent Generations</h4>
-                        <div className="history-list">
-                            {aiState.generationHistory.slice(-3).reverse().map((text, index) => (
-                                <div key={index} className="history-item">
-                                    <div className="history-text">
-                                        {text.slice(0, 100)}{text.length > 100 ? '...' : ''}
-                                    </div>
-                                    <div className="history-actions">
-                                        <button
-                                            onClick={() => handleInsertText(text)}
-                                            className="action-button"
-                                            title="Insert into story"
-                                        >
-                                            <Plus size={14} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleCopyText(text)}
-                                            className="action-button"
-                                            title="Copy to clipboard"
-                                        >
-                                            <Copy size={14} />
-                                        </button>
-                                    </div>
-                                </div>
+            <div className="ai-panel-content">
+                {/* Feature Gate for AI Panel */}
+                <FeatureGuard
+                    feature={FEATURES.BASIC_AI}
+                    fallback={
+                        <div className="feature-locked">
+                            <Crown size={32} />
+                            <h4>AI Writing Assistant</h4>
+                            <p>Sign in to access AI-powered writing assistance and unlock your creativity.</p>
+                            <button 
+                                onClick={() => setShowLoginModal(true)}
+                                className="unlock-feature-btn"
+                            >
+                                Sign In to Unlock
+                            </button>
+                        </div>
+                    }
+                >
+                    {/* Error Display */}
+                    {error && (
+                        <div className="error-message" role="alert" aria-live="polite">
+                            <AlertCircle size={16} aria-hidden="true" />
+                            <span>{error}</span>
+                            <button
+                                className="error-dismiss"
+                                onClick={() => setError(null)}
+                                aria-label="Dismiss error"
+                            >
+                                ×
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Quick Prompts */}
+                    <div className="quick-prompts">
+                        <h4>Quick Prompts</h4>
+                        <div className="prompt-buttons" role="group" aria-label="Quick prompt options">
+                            {quickPrompts.map((item, index) => (
+                                <button
+                                    key={index}
+                                    className="prompt-button"
+                                    onClick={() => setLocalPrompt(item.prompt)}
+                                    disabled={aiState.isGenerating}
+                                    aria-label={`Use prompt: ${item.label}`}
+                                    type="button"
+                                >
+                                    {item.label}
+                                </button>
                             ))}
                         </div>
                     </div>
-                )}
+
+                    {/* Custom Prompt Input */}
+                    <div className="prompt-input-section">
+                        <h4>Custom Prompt</h4>
+                        <div className="prompt-input-container">
+                            <label htmlFor="ai-prompt-textarea" className="sr-only">
+                                Enter your custom AI prompt
+                            </label>
+                            <textarea
+                                id="ai-prompt-textarea"
+                                value={localPrompt}
+                                onChange={(e) => setLocalPrompt(e.target.value)}
+                                placeholder="Tell the AI what you want to write... (e.g., 'continue the story', 'add a dramatic scene', 'develop the main character')"
+                                className="prompt-textarea"
+                                disabled={aiState.isGenerating}
+                                rows={3}
+                                aria-describedby={error ? "ai-error-message" : undefined}
+                            />
+                            <button
+                                onClick={handleGenerate}
+                                disabled={aiState.isGenerating || !localPrompt.trim()}
+                                className="generate-button"
+                                aria-label={aiState.isGenerating ? "Generating content..." : "Generate AI content"}
+                                type="button"
+                            >
+                                {aiState.isGenerating ? (
+                                    <>
+                                        <Loader2 className="loading-icon" size={16} aria-hidden="true" />
+                                        <span>Generating...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Send size={16} aria-hidden="true" />
+                                        <span>Generate</span>
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Generated Content */}
+                    {(aiState.lastGeneration || aiState.isGenerating) && (
+                        <div className="generated-content">
+                            <h4>Generated Content</h4>
+                            {aiState.isGenerating ? (
+                                <div className="generating-placeholder">
+                                    <Loader2 className="loading-icon" size={20} />
+                                    <span>AI is crafting your story...</span>
+                                </div>
+                            ) : (
+                                <div className="generated-text-container">
+                                    <div className="generated-text">
+                                        {aiState.lastGeneration}
+                                    </div>
+                                    <div className="generated-actions">
+                                        <button
+                                            onClick={() => handleInsertText(aiState.lastGeneration)}
+                                            className="action-button insert-button"
+                                            title="Insert into story"
+                                        >
+                                            <Plus size={16} />
+                                            Insert
+                                        </button>
+                                        <button
+                                            onClick={() => handleCopyText(aiState.lastGeneration)}
+                                            className="action-button copy-button"
+                                            title="Copy to clipboard"
+                                        >
+                                            <Copy size={16} />
+                                            Copy
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Generation History */}
+                    {aiState.generationHistory.length > 0 && (
+                        <div className="generation-history">
+                            <h4>Recent Generations</h4>
+                            <div className="history-list">
+                                {aiState.generationHistory.slice(-3).reverse().map((text, index) => (
+                                    <div key={index} className="history-item">
+                                        <div className="history-text">
+                                            {text.slice(0, 100)}{text.length > 100 ? '...' : ''}
+                                        </div>
+                                        <div className="history-actions">
+                                            <button
+                                                onClick={() => handleInsertText(text)}
+                                                className="action-button"
+                                                title="Insert into story"
+                                            >
+                                                <Plus size={14} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleCopyText(text)}
+                                                className="action-button"
+                                                title="Copy to clipboard"
+                                            >
+                                                <Copy size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </FeatureGuard>
             </div>
         </div>
     );

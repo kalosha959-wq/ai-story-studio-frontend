@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useStoryStore } from '../store/storyStore';
-import { Save, FileText, Calendar, RotateCcw } from 'lucide-react';
+import { useAuthStore } from '../store/authStore';
+import { UserProfile } from './UserProfile';
+import { Save, FileText, Calendar, RotateCcw, User, LogIn } from 'lucide-react';
 import './StoryHeader.css';
 
 export const StoryHeader = () => {
@@ -10,9 +12,16 @@ export const StoryHeader = () => {
         saveStory,
         createNewStory,
     } = useStoryStore();
+    
+    const {
+        isAuthenticated,
+        user,
+        setShowLoginModal,
+    } = useAuthStore();
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [tempTitle, setTempTitle] = useState('');
+    const [showUserMenu, setShowUserMenu] = useState(false);
 
     const handleTitleEdit = () => {
         if (!currentStory) return;
@@ -125,10 +134,42 @@ export const StoryHeader = () => {
                 </div>
 
                 <div className="header-actions">
+                    {/* Authentication Section */}
+                    {isAuthenticated ? (
+                        <div className="user-section">
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="user-button"
+                                title={`Signed in as ${user?.firstName} ${user?.lastName}`}
+                            >
+                                <User size={16} />
+                                <span>{user?.firstName}</span>
+                            </button>
+                            
+                            {showUserMenu && (
+                                <div className="user-menu-overlay" onClick={() => setShowUserMenu(false)}>
+                                    <div className="user-menu" onClick={(e) => e.stopPropagation()}>
+                                        <UserProfile />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => setShowLoginModal(true)}
+                            className="login-button"
+                            title="Sign in to save your work and access Pro features"
+                        >
+                            <LogIn size={16} />
+                            <span>Sign In</span>
+                        </button>
+                    )}
+
                     <button
                         onClick={saveStory}
                         className="save-button"
                         title="Save story"
+                        disabled={!isAuthenticated}
                     >
                         <Save size={16} />
                         <span>Save</span>
