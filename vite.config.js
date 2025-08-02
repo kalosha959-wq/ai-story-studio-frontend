@@ -25,7 +25,7 @@ export default defineConfig({
     // Development server configuration
     server: {
         port: 3000,
-        host: 'ai-story-studio.local',
+        host: '0.0.0.0', // Allow access from any IP
         open: false // Don't auto-open browser, let VS Code handle it
     },
 

@@ -188,3 +188,68 @@ jobs:
           text: "❌ AI Story Studio deployment to production failed!"
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+networks:
+  ai-story-studio:
+    driver: bridge  
+  # PostgreSQL Database
+  database:
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${{ secrets.DB_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      POSTGRES_DB: ai_story_studio
+    ports:
+      - "5432:5432" 
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - ai-story-studio
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${{ secrets.DB_USER }}", "-d", "ai_story_studio"]
+      interval: 30s
+      timeout: 10s
+      retries: 5    
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data    
+    restart: unless-stopped
+    networks:
+      - ai-story-studio
+    healthcheck:  
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+  redis_data:
+    driver: local 
+  postgres_data:
+    driver: local 
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:     
+      - ai-story-studio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 5 
+    restart: unless-stopped 
+    depends_on:
+      - database
+      - redis
+    networks:
+      - ai-story-studio
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/metrics"]
+      interval: 30s
+      timeout: 10s
+      retries: 5  
+    restart: unless-stopped
