@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useStoryStore } from '../store/storyStore';
-import { Save, FileText, Calendar, RotateCcw } from 'lucide-react';
+import { useUserStore } from '../store/userStore';
+import { AuthModal } from './AuthModal';
+import { Save, FileText, Calendar, RotateCcw, LogIn, LogOut, User } from 'lucide-react';
 import './StoryHeader.css';
 
 export const StoryHeader = () => {
@@ -10,6 +12,16 @@ export const StoryHeader = () => {
         saveStory,
         createNewStory,
     } = useStoryStore();
+
+    const {
+        user,
+        isAuthenticated,
+        showAuthModal,
+        openAuthModal,
+        closeAuthModal,
+        logout,
+        setUser
+    } = useUserStore();
 
     const [isEditingTitle, setIsEditingTitle] = useState(false);
     const [tempTitle, setTempTitle] = useState('');
@@ -125,6 +137,45 @@ export const StoryHeader = () => {
                 </div>
 
                 <div className="header-actions">
+                    {/* User Authentication Section */}
+                    <div className="user-section">
+                        {isAuthenticated && user ? (
+                            <div className="user-info">
+                                <div className="user-avatar">
+                                    {user.avatar ? (
+                                        <img src={user.avatar} alt={user.name} className="avatar-image" />
+                                    ) : (
+                                        <User size={20} />
+                                    )}
+                                </div>
+                                <div className="user-details">
+                                    <span className="user-name">{user.name}</span>
+                                    {user.subscription && (
+                                        <span className={`user-plan ${user.subscription.plan}`}>
+                                            {user.subscription.plan}
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={logout}
+                                    className="logout-button"
+                                    title="Sign out"
+                                >
+                                    <LogOut size={16} />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                onClick={openAuthModal}
+                                className="login-button"
+                                title="Sign in to save your stories"
+                            >
+                                <LogIn size={16} />
+                                <span>Sign In</span>
+                            </button>
+                        )}
+                    </div>
+
                     <button
                         onClick={saveStory}
                         className="save-button"
@@ -144,6 +195,13 @@ export const StoryHeader = () => {
                     </button>
                 </div>
             </div>
+
+            {/* Authentication Modal */}
+            <AuthModal
+                isOpen={showAuthModal}
+                onClose={closeAuthModal}
+                onAuthSuccess={setUser}
+            />
         </div>
     );
 };

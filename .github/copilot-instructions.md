@@ -1,9 +1,9 @@
 # AI Story Studio Frontend - Copilot Instructions
 
 ## Project Status: Production-Ready Application
-This is a **feature-complete AI story creation platform** with React frontend and Express.js backend. The application is production-ready with comprehensive authentication, state management, and cinematic storytelling capabilities.
+This is a **feature-complete AI story creation platform** with React frontend and Express.js backend. The application is production-ready with comprehensive authentication, state management, cinematic storytelling capabilities, and complete deployment infrastructure.
 
-**Current State**: Full-stack TypeScript application with React 19, TipTap editor, Zustand stores, JWT authentication, and comprehensive UI/UX.
+**Current State**: Full-stack TypeScript application with React 19, TipTap editor, Zustand stores, JWT authentication, comprehensive CI/CD, and Google Cloud Run deployment.
 
 ## Critical Context for AI Agents
 
@@ -15,6 +15,7 @@ This is a **feature-complete AI story creation platform** with React frontend an
 - **Authentication**: JWT with bcrypt, complete user management system
 - **Styling**: CSS Modules with Framer Motion animations
 - **Build Output**: Vite builds to `dist/`, TypeScript compiles with strict mode
+- **Deployment**: Google Cloud Run with automated Docker builds
 
 ### Core Application Components
 
@@ -51,10 +52,17 @@ This is a **feature-complete AI story creation platform** with React frontend an
 
 #### Build & Development Commands
 ```bash
-npm run dev        # Start Vite dev server (localhost:3000)
+npm run dev        # Start Vite dev server (localhost:3000, auto-detects port conflicts)
 npm run build      # TypeScript compilation + Vite production build
 npm run preview    # Preview production build locally
 npm run lint       # ESLint with TypeScript support
+```
+
+#### Production Deployment Commands
+```bash
+./deploy-cloudrun.sh     # Deploy to Google Cloud Run (requires gcloud setup)
+./deploy-production.sh   # Deploy to AWS/VPS (requires AWS CLI)
+npm run preview         # Test production build locally before deployment
 ```
 
 #### VS Code Debug Configuration
@@ -79,20 +87,26 @@ npm run lint       # ESLint with TypeScript support
 - **Encryption**: AES-256 encryption utilities for sensitive data
 - **Legal Documentation**: Complete terms, privacy policy, NDA templates
 
-### Accessibility & User Experience Standards
+### Production Infrastructure
 
-#### WCAG AAA Compliance Achieved
-- **Screen Reader Support**: Comprehensive ARIA labels and descriptions
-- **Keyboard Navigation**: Full keyboard accessibility for all interactive elements
-- **Color Contrast**: High contrast ratios for all text and UI elements
-- **Focus Management**: Clear focus indicators and logical tab order
-- **Loading States**: User feedback for all asynchronous operations
+#### Google Cloud Run Deployment (Primary)
+- **Containerized Deployment**: Docker builds with multi-stage optimization
+- **Auto-scaling**: 0-10 instances based on traffic
+- **Environment Configuration**: `.env.production` with Cloud SQL integration
+- **Health Checks**: Automated health monitoring and rollback
+- **CI/CD Integration**: GitHub Actions with automated testing and deployment
 
-#### Mobile-First Responsive Design
-- **Slide-up AI Panel**: Mobile-optimized interface preventing overlap
-- **Touch-friendly Controls**: Appropriately sized touch targets
-- **Responsive Typography**: Fluid text scaling across devices
-- **Optimized Performance**: Lazy loading and efficient re-renders
+#### AWS/VPS Deployment (Alternative)
+- **Static Frontend**: S3 + CloudFront distribution
+- **Backend Services**: PM2 cluster mode with ecosystem configuration
+- **Database**: PostgreSQL with connection pooling
+- **SSL/TLS**: Let's Encrypt with auto-renewal
+
+#### Monitoring & Security
+- **Datadog Synthetics**: E2E testing with GitHub Actions integration
+- **CodeQL Analysis**: Automated security scanning
+- **Error Tracking**: Sentry integration ready
+- **Performance Monitoring**: New Relic configuration available
 
 ### Critical Integration Patterns
 
@@ -117,11 +131,40 @@ set((state) => ({
 }));
 ```
 
-#### AI Generation Flow
-1. User inputs prompt in AIPanel
-2. `startAIGeneration()` sets loading state
-3. Backend integration ready for OpenAI/Claude APIs
-4. `addGeneratedText()` appends AI response to editor
+#### Production Build Optimization
+```javascript
+// vite.config.js - Optimized for production with source maps
+export default defineConfig({
+  build: {
+    sourcemap: true,
+    target: 'esnext',
+    rollupOptions: {
+      output: {
+        // Code splitting for optimal loading
+        manualChunks: (id) => {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
+        }
+      }
+    }
+  }
+});
+```
+
+### Deployment Configuration Patterns
+
+#### Environment Management
+- **Development**: `npm run dev` with HMR on port 3000
+- **Production Preview**: `npm run preview` on port 4173
+- **Production Deploy**: Automated build → container → Cloud Run
+
+#### CI/CD Workflow
+1. **GitHub Actions Trigger**: Push to main or manual dispatch
+2. **Parallel Testing**: Frontend + Backend test suites
+3. **Build Artifacts**: Production-optimized bundles
+4. **Deployment**: Google Cloud Run with zero-downtime updates
+5. **Health Verification**: Automated endpoint testing
 
 ### Security & Legal Considerations
 
@@ -136,6 +179,7 @@ set((state) => ({
 - **Request Validation**: Zod schemas for all API endpoints
 - **Rate Limiting**: Account locking for failed authentication attempts
 - **Encryption**: AES-256 for sensitive data storage
+- **Container Security**: Non-root user execution in Docker
 
 ### Debugging & Troubleshooting
 
@@ -145,15 +189,16 @@ set((state) => ({
 - **TypeScript Strict Mode**: Full type safety with strict configuration
 - **Hot Module Replacement**: Vite HMR for rapid development
 
-#### VS Code Integration
-- **Launch Configurations**: Pre-configured for both frontend and backend debugging
-- **TypeScript IntelliSense**: Full IDE support with proper type definitions
-- **Source Maps**: Accurate debugging in development and production builds
+#### Production Debugging
+- **Source Maps**: Available in production builds for debugging
+- **Health Endpoints**: `/health` routes for monitoring
+- **Log Aggregation**: Structured logging with Docker and Cloud Run
+- **Performance Metrics**: Built-in monitoring and alerting
 
 ---
 
 **Status**: ✅ **Production-Ready Application**
 
-This is a complete, feature-rich AI story creation platform ready for deployment. The codebase includes 39+ TypeScript files with ~8,000 lines of production-quality code, comprehensive error handling, accessibility compliance, and security best practices.
+This is a complete, feature-rich AI story creation platform ready for deployment. The codebase includes 39+ TypeScript files with ~8,000 lines of production-quality code, comprehensive error handling, accessibility compliance, security best practices, and enterprise-grade deployment infrastructure.
 
-**For AI Agents**: You're working with a mature application. Focus on feature enhancement, performance optimization, and maintaining the established architectural patterns rather than basic setup.
+**For AI Agents**: You're working with a mature application with full deployment automation. Focus on feature enhancement, performance optimization, and maintaining the established architectural patterns. Use `./deploy-cloudrun.sh` for Google Cloud deployment or `./deploy-production.sh` for AWS/VPS deployment.

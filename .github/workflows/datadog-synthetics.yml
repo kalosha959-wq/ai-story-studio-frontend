@@ -31,8 +31,20 @@ jobs:
     - name: Run Datadog Synthetic tests
       uses: DataDog/synthetics-ci-github-action@87b505388a22005bb8013481e3f73a367b9a53eb # v1.4.0
       with:
-        api_key: ${{secrets.DD_API_KEY}}
-        app_key: ${{secrets.DD_APP_KEY}}
+        api_key: ${{ secrets.DD_API_KEY }}
+        app_key: ${{ secrets.DD_APP_KEY }}
         test_search_query: 'tag:e2e-tests' #Modify this tag to suit your tagging strategy
+        test_run_name: 'GitHub Action Synthetic Test Run'
+        test_run_tags: 'github_action,ai-story-studio-backend' #Modify this tag to suit your tagging strategy
+        test_run_options: '{"ci": true}' #This will allow you to see the test run in the CI section of the Datadog Synthetic UI
+        test_run_timeout: 300 #Timeout for the test run in seconds, adjust as necessary
+        test_run_retry: 2 #Number of retries for the test run, adjust as necessary    
+
+
+
+    # If you want to ignore the test results, you can uncomment the following line
+    # - name: Ignore test results
+    #   run: echo "Ignoring test results"
+
 
 
