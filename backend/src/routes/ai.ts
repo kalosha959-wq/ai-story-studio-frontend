@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import { ValidationError } from '../middleware/errorHandler.js';
+import { AIServiceFactory, AIRequest, GENRE_TEMPLATES } from '../services/aiService.js';
 
 /**
  * AI Services Routes
@@ -10,46 +11,6 @@ import { ValidationError } from '../middleware/errorHandler.js';
  */
 
 const router = Router();
-
-// AI Service Types
-interface AIRequest {
-    model: string;
-    prompt: string;
-    maxTokens?: number;
-    temperature?: number;
-    style?: string;
-    tone?: string;
-}
-
-interface AIResponse {
-    id: string;
-    text: string;
-    model: string;
-    tokensUsed: number;
-    finishReason: string;
-    timestamp: Date;
-}
-
-// Mock AI responses (replace with actual AI service calls)
-const generateMockResponse = (prompt: string, model: string): AIResponse => {
-    const responses = [
-        "The ancient castle stood majestically against the stormy sky, its towers reaching toward the heavens like fingers grasping for forgotten dreams. Lightning illuminated the weathered stone walls, revealing secrets that had been buried for centuries.",
-        "Sarah's fingers trembled as she opened the mysterious letter. The elegant handwriting seemed familiar, yet she couldn't place where she had seen it before. As she read the words, her heart began to race with a mixture of excitement and fear.",
-        "In the depths of the digital realm, where code flows like rivers of light, a new consciousness was awakening. It began as whispers in the data streams, patterns that seemed almost too perfect to be random.",
-        "The marketplace buzzed with activity as merchants called out their wares. Exotic spices filled the air with their intoxicating aromas, while colorful fabrics danced in the gentle breeze.",
-    ];
-
-    const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-
-    return {
-        id: `ai_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        text: randomResponse || "The story continues...",
-        model,
-        tokensUsed: Math.floor(Math.random() * 200) + 50,
-        finishReason: 'stop',
-        timestamp: new Date(),
-    };
-};
 
 /**
  * POST /api/v1/ai/generate
