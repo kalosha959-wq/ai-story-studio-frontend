@@ -13,7 +13,7 @@ import { AIServiceFactory, AIRequest, GENRE_TEMPLATES } from '../services/aiServ
 const router = Router();
 
 /**
- * POST /api/v1/ai/generate
+ * POST /api/ai/generate
  * Generate story content using AI
  */
 router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
@@ -23,8 +23,10 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
         maxTokens = 500,
         temperature = 0.7,
         style = 'narrative',
-        tone = 'neutral',
-    }: AIRequest = req.body;
+        tone = 'formal',
+        genre,
+        context,
+    } = req.body as AIRequest;
 
     // Validation
     if (!prompt || prompt.trim().length === 0) {
@@ -36,16 +38,8 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
     }
 
     const validModels = ['gpt-4', 'gpt-3.5-turbo', 'claude-3', 'claude-2'];
-    if (!validModels.includes(model)) {
+    if (model && !validModels.includes(model)) {
         throw new ValidationError(`Invalid model. Supported models: ${validModels.join(', ')}`);
-    }
-
-    if (maxTokens < 10 || maxTokens > 2000) {
-        throw new ValidationError('maxTokens must be between 10 and 2000');
-    }
-
-    if (temperature < 0 || temperature > 2) {
-        throw new ValidationError('temperature must be between 0 and 2');
     }
 
     req.requestLogger?.info('AI generation requested', {
@@ -55,19 +49,20 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
         temperature,
         style,
         tone,
+        genre,
     });
 
-    // Simulate AI processing time
-    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
-
-    // Generate mock response
-    const aiResponse = generateMockResponse(prompt, model);
-
-    req.requestLogger?.info('AI generation completed', {
-        responseId: aiResponse.id,
-        model: aiResponse.model,
-        tokensUsed: aiResponse.tokensUsed,
-        responseLength: aiResponse.text.length,
+    // Create AI service and generate response
+    const aiService = AIServiceFactory.createService(req.requestLogger);
+    const aiResponse = await aiService.generateStory({
+        prompt,
+        model,
+        maxTokens,
+        temperature,
+        style,
+        tone,
+        genre: genre || 'general',
+        context: context || '',
     });
 
     res.json({
@@ -76,9 +71,9 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
         data: {
             response: aiResponse,
             usage: {
-                promptTokens: Math.floor(prompt.length / 4), // Rough estimation
+                promptTokens: Math.floor(prompt.length / 4),
                 completionTokens: aiResponse.tokensUsed,
-                totalTokens: Math.floor(prompt.length / 4) + aiResponse.tokensUsed,
+                totalTokens: aiResponse.tokensUsed + Math.floor(prompt.length / 4),
             },
         },
         timestamp: new Date().toISOString(),
@@ -86,70 +81,65 @@ router.post('/generate', asyncHandler(async (req: Request, res: Response) => {
 }));
 
 /**
- * POST /api/v1/ai/complete
- * Complete partial text using AI
+ * POST /api/ai/continue
+ * Continue an existing story
  */
-router.post('/complete', asyncHandler(async (req: Request, res: Response) => {
+router.post('/continue', asyncHandler(async (req: Request, res: Response) => {
     const {
         text,
         model = 'gpt-4',
         maxTokens = 300,
-        temperature = 0.5,
+        temperature = 0.7,
+        style = 'narrative',
+        tone = 'formal',
     } = req.body;
 
     if (!text || text.trim().length === 0) {
-        throw new ValidationError('Text to complete is required');
+        throw new ValidationError('Text to continue is required');
     }
 
     if (text.length > 1500) {
-        throw new ValidationError('Text is too long for completion (max 1500 characters)');
+        throw new ValidationError('Text is too long for continuation (max 1500 characters)');
     }
 
-    req.requestLogger?.info('AI completion requested', {
+    req.requestLogger?.info('AI story continuation requested', {
         model,
         textLength: text.length,
         maxTokens,
         temperature,
+        style,
+        tone,
     });
 
-    // Simulate completion
-    await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1200));
-
-    const completions = [
-        " and discovered a hidden passage behind the bookshelf.",
-        " when suddenly the lights went out.",
-        " revealing a truth that would change everything.",
-        " as the mystery deepened with each passing moment.",
-        " but little did they know what awaited them.",
-    ];
-
-    const completion = completions[Math.floor(Math.random() * completions.length)] || " and the story continued...";
-
-    const response = {
-        id: `completion_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        originalText: text,
-        completion,
+    const aiService = AIServiceFactory.createService(req.requestLogger);
+    const aiResponse = await aiService.continueStory({
+        prompt: text,
         model,
-        tokensUsed: Math.floor(Math.random() * 100) + 20,
-        confidence: 0.85 + Math.random() * 0.1,
-    };
-
-    req.requestLogger?.info('AI completion completed', {
-        responseId: response.id,
-        completionLength: completion.length,
-        tokensUsed: response.tokensUsed,
+        maxTokens,
+        temperature,
+        style,
+        tone,
+        genre: 'general',
+        context: '',
     });
 
     res.json({
         success: true,
-        message: 'Text completion generated successfully',
-        data: { response },
+        message: 'Story continuation generated successfully',
+        data: {
+            response: aiResponse,
+            usage: {
+                promptTokens: Math.floor(text.length / 4),
+                completionTokens: aiResponse.tokensUsed,
+                totalTokens: aiResponse.tokensUsed + Math.floor(text.length / 4),
+            },
+        },
         timestamp: new Date().toISOString(),
     });
 }));
 
 /**
- * POST /api/v1/ai/character
+ * POST /api/ai/character
  * Generate character profiles using AI
  */
 router.post('/character', asyncHandler(async (req: Request, res: Response) => {
@@ -175,47 +165,26 @@ router.post('/character', asyncHandler(async (req: Request, res: Response) => {
         detail,
     });
 
-    // Simulate character generation
-    await new Promise(resolve => setTimeout(resolve, 1500 + Math.random() * 2000));
+    const aiService = AIServiceFactory.createService(req.requestLogger);
+    
+    // Build character description prompt
+    const characterPrompt = `Character Name: ${name.trim()}
+${age ? `Age: ${age}` : ''}
+${occupation ? `Occupation: ${occupation}` : ''}
+${personality ? `Personality: ${personality}` : ''}
+${background ? `Background: ${background}` : ''}
+Genre: ${genre}
+Detail Level: ${detail}`;
 
-    const character = {
-        id: `char_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: name.trim(),
-        age: age || Math.floor(Math.random() * 50) + 20,
-        occupation: occupation || 'Mysterious wanderer',
-        appearance: {
-            height: '5\'8"',
-            build: 'Athletic',
-            hairColor: 'Dark brown',
-            eyeColor: 'Green',
-            distinguishingFeatures: 'Scar above left eyebrow, confident smile',
-        },
-        personality: {
-            traits: personality ? [personality] : ['Determined', 'Curious', 'Compassionate'],
-            strengths: ['Quick thinking', 'Loyal to friends', 'Natural leader'],
-            weaknesses: ['Impatient', 'Overly trusting', 'Fear of heights'],
-            motivations: ['Seeking truth about their past', 'Protecting loved ones'],
-        },
-        background: {
-            origin: background || 'Small coastal town',
-            education: 'Self-taught with formal training in languages',
-            family: 'Raised by grandmother after parents disappeared',
-            significantEvents: ['Discovery of hidden family legacy', 'First encounter with magic'],
-        },
-        relationships: [
-            { name: 'Elena', relationship: 'Mentor', description: 'Wise old woman who taught survival skills' },
-            { name: 'Marcus', relationship: 'Best friend', description: 'Childhood companion, now a skilled craftsman' },
-        ],
-        skills: ['Archery', 'Herbalism', 'Ancient languages', 'Negotiation'],
-        equipment: ['Enchanted bow', 'Leather armor', 'Map of hidden paths', 'Healing herbs'],
-        secrets: ['Carries a mysterious amulet', 'Can understand animal speech'],
-        createdAt: new Date(),
-    };
-
-    req.requestLogger?.info('AI character generation completed', {
-        characterId: character.id,
-        name: character.name,
-        skillCount: character.skills.length,
+    const character = await aiService.createCharacter({
+        prompt: characterPrompt,
+        model: 'gpt-4',
+        maxTokens: 800,
+        temperature: 0.8,
+        style: 'character',
+        tone: 'formal',
+        genre,
+        context: '',
     });
 
     res.json({
