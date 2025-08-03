@@ -166,7 +166,7 @@ router.post('/character', asyncHandler(async (req: Request, res: Response) => {
     });
 
     const aiService = AIServiceFactory.createService(req.requestLogger);
-    
+
     // Build character description prompt
     const characterPrompt = `Character Name: ${name.trim()}
 ${age ? `Age: ${age}` : ''}
